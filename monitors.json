@@ -3,7 +3,7 @@
   "monitors": [
     {
       "name": "Example API",
-      "url": "https://example.com",
+      "url": "https://photoframe.betopiagroup.com",
       "interval_seconds": 30,
       "timeout_seconds": 8,
       "expected_status": [200],
@@ -22,7 +22,7 @@
     },
     {
       "name": "Ilisher Bari",
-      "url": "https://www.facebook.com/",
+      "url": "https://facebook.com/",
       "interval_seconds": 30,
       "timeout_seconds": 10,
       "expected_status": [200],
