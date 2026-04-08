@@ -1,0 +1,13 @@
+{
+  "data_dir": "data",
+  "monitors": [
+    {
+      "name": "Local Test Service",
+      "url": "http://127.0.0.1:18081/healthz",
+      "interval_seconds": 1,
+      "timeout_seconds": 2,
+      "expected_status": [200],
+      "method": "GET"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "data_dir": "data",
+  "monitors": [
+    {
+      "name": "Example API",
+      "url": "https://example.com",
+      "interval_seconds": 30,
+      "timeout_seconds": 8,
+      "expected_status": [200],
+      "method": "GET",
+      "tags": ["public", "frontend"]
+    },
+    {
+      "name": "Internal Healthcheck",
+      "url": "https://ilisherbari.com",
+      "interval_seconds": 15,
+      "timeout_seconds": 3,
+      "expected_status": [200, 204],
+      "method": "GET",
+      "verify_ssl": false,
+      "tags": ["internal", "service"]
+    },
+    {
+      "name": "Ilisher Bari",
+      "url": "https://ilisherbari.com",
+      "interval_seconds": 30,
+      "timeout_seconds": 10,
+      "expected_status": [200],
+      "method": "GET"
+    }
+  ],
+  "alerts": [
+    {
+      "type": "webhook",
+      "url": "https://hooks.slack.com/services/replace/me",
+      "headers": {
+        "X-Env": "devops"
+      },
+      "body_template": "{\"text\": \"[$event] $monitor at $checked_at. URL: $url. Error: $error\"}"
+    }
+  ]
+}
