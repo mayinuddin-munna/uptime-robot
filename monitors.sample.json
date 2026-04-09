@@ -3,6 +3,7 @@
   "monitors": [
     {
       "name": "Example API",
+      "type": "http",
       "url": "https://example.com",
       "interval_seconds": 30,
       "timeout_seconds": 8,
@@ -12,6 +13,7 @@
     },
     {
       "name": "Internal Healthcheck",
+      "type": "http",
       "url": "https://ilisherbari.com",
       "interval_seconds": 15,
       "timeout_seconds": 3,
@@ -22,11 +24,30 @@
     },
     {
       "name": "Ilisher Bari",
+      "type": "http",
       "url": "https://ilisherbari.com",
       "interval_seconds": 30,
       "timeout_seconds": 10,
       "expected_status": [200],
       "method": "GET"
+    },
+    {
+      "name": "SSH Port",
+      "type": "tcp",
+      "host": "ilisherbari.com",
+      "port": 22,
+      "interval_seconds": 30,
+      "timeout_seconds": 5,
+      "tags": ["infra", "ssh"]
+    },
+    {
+      "name": "HTTPS Port",
+      "type": "tcp",
+      "host": "ilisherbari.com",
+      "port": 443,
+      "interval_seconds": 30,
+      "timeout_seconds": 5,
+      "tags": ["infra", "https"]
     }
   ],
   "alerts": [
@@ -37,6 +58,18 @@
         "X-Env": "devops"
       },
       "body_template": "{\"text\": \"[$event] $monitor at $checked_at. URL: $url. Error: $error\"}"
+    },
+    {
+      "type": "email",
+      "smtp_host": "smtp.gmail.com",
+      "smtp_port": 587,
+      "smtp_username": "alerts@example.com",
+      "smtp_password": "app-password-here",
+      "from_email": "alerts@example.com",
+      "to_emails": ["devops@example.com", "owner@example.com"],
+      "use_tls": true,
+      "subject_template": "[${event}] ${monitor}",
+      "body_template": "Monitor: $monitor\nTarget: $target\nTime: $checked_at\nStatus code: $status_code\nLatency: $latency_ms ms\nError: $error"
     }
   ]
 }

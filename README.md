@@ -5,11 +5,12 @@ A lightweight, dependency-free uptime monitor for DevOps teams. It performs sche
 ## Features
 
 - Config-driven monitors from a single JSON file
+- HTTP and TCP port checks from the same config
 - Background health checks with configurable intervals and timeouts
 - SQLite persistence for current status, check history, and incident tracking
 - Built-in dashboard at `/`
 - JSON API for status, checks, and incidents
-- Optional webhook alerts for outages and recoveries
+- Optional webhook and email alerts for outages and recoveries
 - No external Python packages required
 
 ## Project Layout
@@ -47,6 +48,7 @@ python3 main.py --config monitors.json --host 0.0.0.0 --port 8000
   "monitors": [
     {
       "name": "Production API",
+      "type": "http",
       "url": "https://api.example.com/healthz",
       "interval_seconds": 30,
       "timeout_seconds": 5,
@@ -56,6 +58,15 @@ python3 main.py --config monitors.json --host 0.0.0.0 --port 8000
         "Authorization": "Bearer token"
       },
       "tags": ["prod", "api"]
+    },
+    {
+      "name": "Production SSH",
+      "type": "tcp",
+      "host": "prod.example.com",
+      "port": 22,
+      "interval_seconds": 15,
+      "timeout_seconds": 3,
+      "tags": ["prod", "ssh"]
     }
   ],
   "alerts": [
@@ -63,8 +74,54 @@ python3 main.py --config monitors.json --host 0.0.0.0 --port 8000
       "type": "webhook",
       "url": "https://hooks.slack.com/services/...",
       "body_template": "{\"text\": \"[$event] $monitor is now ${ok}\"}"
+    },
+    {
+      "type": "email",
+      "smtp_host": "smtp.gmail.com",
+      "smtp_port": 587,
+      "smtp_username": "alerts@example.com",
+      "smtp_password": "app-password",
+      "from_email": "alerts@example.com",
+      "to_emails": ["devops@example.com"],
+      "use_tls": true,
+      "subject_template": "[${event}] ${monitor}",
+      "body_template": "Monitor: $monitor\nTarget: $target\nTime: $checked_at\nStatus code: $status_code\nLatency: $latency_ms ms\nError: $error"
     }
   ]
+}
+```
+
+## Email Notifications
+
+When a monitor changes from healthy to unhealthy, the service sends a `down` alert. When it comes back, it sends a `recovered` alert.
+
+For email alerts, add an `alerts` entry like this:
+
+```json
+{
+  "type": "email",
+  "smtp_host": "smtp.gmail.com",
+  "smtp_port": 587,
+  "smtp_username": "alerts@example.com",
+  "smtp_password": "app-password",
+  "from_email": "alerts@example.com",
+  "to_emails": ["devops@example.com", "owner@example.com"],
+  "use_tls": true,
+  "subject_template": "[${event}] ${monitor}",
+  "body_template": "Monitor: $monitor\nTarget: $target\nTime: $checked_at\nStatus code: $status_code\nLatency: $latency_ms ms\nError: $error"
+}
+```
+
+For port checks like `22` and `443`, use TCP monitors:
+
+```json
+{
+  "name": "SSH Port",
+  "type": "tcp",
+  "host": "ilisherbari.com",
+  "port": 22,
+  "interval_seconds": 3,
+  "timeout_seconds": 3
 }
 ```
 

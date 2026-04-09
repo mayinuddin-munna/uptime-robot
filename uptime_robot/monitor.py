@@ -4,7 +4,6 @@ import json
 import socket
 import ssl
 import smtplib
-import ssl
 import threading
 import time
 from datetime import UTC, datetime

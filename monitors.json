@@ -3,18 +3,18 @@
   "monitors": [
     {
       "name": "Example API",
-      "url": "https://photoframe.betopiagroup.com",
-      "interval_seconds": 30,
-      "timeout_seconds": 8,
-      "expected_status": [200],
+      "url": "https://betopiagroup.com",
+      "interval_seconds": 3,
+      "timeout_seconds": 5,
+      "expected_status": [200, 204],
       "method": "GET",
       "tags": ["public", "frontend"]
     },
     {
       "name": "Internal Healthcheck",
       "url": "https://discountbazar.co.uk",
-      "interval_seconds": 15,
-      "timeout_seconds": 3,
+      "interval_seconds": 3,
+      "timeout_seconds": 5,
       "expected_status": [200, 204],
       "method": "GET",
       "verify_ssl": false,
@@ -22,10 +22,10 @@
     },
     {
       "name": "Ilisher Bari",
-      "url": "https://facebook.com/",
-      "interval_seconds": 30,
-      "timeout_seconds": 10,
-      "expected_status": [200],
+      "url": "https://ilisherbari.com",
+      "interval_seconds": 3,
+      "timeout_seconds": 5,
+      "expected_status": [200, 204],
       "method": "GET"
     }
   ],
