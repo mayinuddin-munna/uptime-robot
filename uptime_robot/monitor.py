@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import json
+import socket
+import ssl
+import smtplib
 import ssl
 import threading
 import time
 from datetime import UTC, datetime
+from email.message import EmailMessage
 from string import Template
 from urllib import error, request
 
@@ -21,6 +25,7 @@ class AlertDispatcher:
             "event": event,
             "monitor": result.monitor_name,
             "url": result.url,
+            "target": result.url,
             "checked_at": result.checked_at,
             "ok": result.ok,
             "status_code": result.status_code,
@@ -28,17 +33,11 @@ class AlertDispatcher:
             "error": result.error,
         }
         for alert in self._alerts:
-            body = self._build_body(alert, payload)
-            data = body.encode("utf-8") if body else None
-            req = request.Request(
-                url=alert.url,
-                data=data,
-                method=alert.method,
-                headers={"Content-Type": "application/json", **alert.headers},
-            )
             try:
-                with request.urlopen(req, timeout=5):
-                    pass
+                if alert.type == "email":
+                    self._send_email(alert, payload)
+                else:
+                    self._send_webhook(alert, payload)
             except Exception:
                 # Alert transport should never crash monitoring.
                 continue
@@ -47,6 +46,45 @@ class AlertDispatcher:
         if alert.body_template:
             return Template(alert.body_template).safe_substitute(payload)
         return json.dumps(payload)
+
+    def _build_subject(self, alert: AlertConfig, payload: dict) -> str:
+        template = alert.subject_template or "[${event}] ${monitor} status change"
+        return Template(template).safe_substitute(payload)
+
+    def _send_webhook(self, alert: AlertConfig, payload: dict) -> None:
+        body = self._build_body(alert, payload)
+        data = body.encode("utf-8") if body else None
+        req = request.Request(
+            url=alert.url or "",
+            data=data,
+            method=alert.method,
+            headers={"Content-Type": "application/json", **alert.headers},
+        )
+        with request.urlopen(req, timeout=5):
+            pass
+
+    def _send_email(self, alert: AlertConfig, payload: dict) -> None:
+        message = EmailMessage()
+        message["Subject"] = self._build_subject(alert, payload)
+        message["From"] = alert.from_email or ""
+        message["To"] = ", ".join(alert.to_emails)
+        message.set_content(self._build_body(alert, payload))
+
+        if alert.use_ssl:
+            with smtplib.SMTP_SSL(alert.smtp_host, alert.smtp_port, timeout=10) as smtp:
+                self._smtp_login(alert, smtp)
+                smtp.send_message(message)
+            return
+
+        with smtplib.SMTP(alert.smtp_host, alert.smtp_port, timeout=10) as smtp:
+            if alert.use_tls:
+                smtp.starttls(context=ssl.create_default_context())
+            self._smtp_login(alert, smtp)
+            smtp.send_message(message)
+
+    def _smtp_login(self, alert: AlertConfig, smtp: smtplib.SMTP) -> None:
+        if alert.smtp_username and alert.smtp_password:
+            smtp.login(alert.smtp_username, alert.smtp_password)
 
 
 class MonitorService:
@@ -58,7 +96,7 @@ class MonitorService:
         self._alerts = AlertDispatcher(config.alerts)
 
         for monitor in config.monitors:
-            self._storage.ensure_monitor(monitor.name, monitor.url)
+            self._storage.ensure_monitor(monitor.name, monitor.target)
 
     def start(self) -> None:
         for monitor in self._config.monitors:
@@ -93,11 +131,16 @@ class MonitorService:
                 break
 
     def _check(self, monitor: MonitorConfig) -> CheckResult:
+        if monitor.type == "tcp":
+            return self._check_tcp(monitor)
+        return self._check_http(monitor)
+
+    def _check_http(self, monitor: MonitorConfig) -> CheckResult:
         started = time.perf_counter()
         checked_at = datetime.now(UTC).replace(microsecond=0).isoformat()
         data = monitor.body.encode("utf-8") if monitor.body is not None else None
         req = request.Request(
-            url=monitor.url,
+            url=monitor.url or "",
             data=data,
             method=monitor.method,
             headers=monitor.headers,
@@ -115,7 +158,7 @@ class MonitorService:
                 error_message = None if ok else f"Unexpected status: {status_code}"
                 return CheckResult(
                     monitor_name=monitor.name,
-                    url=monitor.url,
+                    url=monitor.target,
                     checked_at=checked_at,
                     ok=ok,
                     status_code=status_code,
@@ -126,7 +169,7 @@ class MonitorService:
             latency = round((time.perf_counter() - started) * 1000, 2)
             return CheckResult(
                 monitor_name=monitor.name,
-                url=monitor.url,
+                url=monitor.target,
                 checked_at=checked_at,
                 ok=False,
                 status_code=exc.code,
@@ -137,7 +180,34 @@ class MonitorService:
             latency = round((time.perf_counter() - started) * 1000, 2)
             return CheckResult(
                 monitor_name=monitor.name,
-                url=monitor.url,
+                url=monitor.target,
+                checked_at=checked_at,
+                ok=False,
+                status_code=None,
+                latency_ms=latency,
+                error=str(exc),
+            )
+
+    def _check_tcp(self, monitor: MonitorConfig) -> CheckResult:
+        started = time.perf_counter()
+        checked_at = datetime.now(UTC).replace(microsecond=0).isoformat()
+        try:
+            with socket.create_connection((monitor.host or "", int(monitor.port or 0)), timeout=monitor.timeout_seconds):
+                latency = round((time.perf_counter() - started) * 1000, 2)
+                return CheckResult(
+                    monitor_name=monitor.name,
+                    url=monitor.target,
+                    checked_at=checked_at,
+                    ok=True,
+                    status_code=None,
+                    latency_ms=latency,
+                    error=None,
+                )
+        except Exception as exc:
+            latency = round((time.perf_counter() - started) * 1000, 2)
+            return CheckResult(
+                monitor_name=monitor.name,
+                url=monitor.target,
                 checked_at=checked_at,
                 ok=False,
                 status_code=None,
