@@ -1,0 +1,33 @@
+{
+  "sites": [
+    {
+      "name": "Python Homepage",
+      "url": "https://www.python.org/",
+      "expected_status": 200,
+      "expected_text": "Python",
+      "latency_threshold_ms": 1200,
+      "check_cert": true,
+      "cert_warn_days": 21,
+      "enabled": true
+    },
+    {
+      "name": "GitHub API",
+      "url": "https://api.github.com",
+      "expected_status": 200,
+      "expected_text": "current_user_url",
+      "latency_threshold_ms": 1500,
+      "check_cert": true,
+      "cert_warn_days": 14,
+      "enabled": true
+    },
+    {
+      "name": "HTTPBin Status",
+      "url": "https://httpbin.org/status/200",
+      "expected_status": 200,
+      "latency_threshold_ms": 1800,
+      "check_cert": true,
+      "cert_warn_days": 14,
+      "enabled": true
+    }
+  ]
+}

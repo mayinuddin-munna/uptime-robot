@@ -1,141 +1,272 @@
 # Uptime Robot
 
-A lightweight, dependency-free uptime monitor for DevOps teams. It performs scheduled HTTP checks, stores history in SQLite, tracks incidents, exposes a JSON API, and ships with a built-in dashboard.
+This project is a production-oriented uptime monitoring robot built in Python. It watches sites defined in `sites.json`, hot-reloads configuration changes without a restart, stores rolling history in JSON, sends deduplicated email alerts, checks SSL expiry, and exposes a Flask dashboard plus JSON APIs.
 
-## Features
+## What It Does
 
-- Config-driven monitors from a single JSON file
-- HTTP and TCP port checks from the same config
-- Background health checks with configurable intervals and timeouts
-- SQLite persistence for current status, check history, and incident tracking
-- Built-in dashboard at `/`
-- JSON API for status, checks, and incidents
-- Optional webhook and email alerts for outages and recoveries
-- No external Python packages required
+- Hot-reloads `sites.json` on every monitoring cycle
+- Checks HTTP/HTTPS targets with retry and backoff
+- Validates expected HTTP status codes and optional response text
+- Tracks latency for every check and stores 30 days of history in `history.json`
+- Stores live state and alert timestamps in `state.json`
+- Sends SMTP email alerts for:
+  - site DOWN
+  - site recovery
+  - high latency with cooldown
+  - SSL certificate nearing expiry once per day
+  - monitor-loop crashes
+- Shows a dashboard with:
+  - live UP/DOWN state
+  - latency bar
+  - last check time
+  - 24h / 7d / 30d uptime percentages
+  - SSL certificate countdown
+  - Chart.js latency history
+- Provides JSON APIs at `/api/status` and `/api/history`
+- Logs to both console and `uptime.log`
 
-## Project Layout
+## Files
 
-- `main.py`: entry point
-- `uptime_robot/config.py`: config loading and validation
-- `uptime_robot/monitor.py`: checker threads and alert dispatching
-- `uptime_robot/storage.py`: SQLite persistence
-- `uptime_robot/web.py`: dashboard and JSON API
-- `monitors.sample.json`: sample configuration
+- `monitor.py`: background monitoring loop
+- `dashboard.py`: Flask dashboard served by Waitress
+- `manage_sites.py`: CLI to add, remove, enable, disable, and update sites
+- `sites.json`: monitored site definitions
+- `.env.example` and `.env.template`: environment templates, copy one to `.env`
+- `state.json`: live status and alert persistence, created automatically
+- `history.json`: rolling 30-day check history, created automatically
+- `uptime.log`: rotating-by-OS log target used by both processes
+- `uptime_robot/common.py`: shared config, JSON, and uptime helpers
 
-## Quick Start
+## Requirements
 
-1. Copy the sample config:
+- Python 3.11+
+- Network access from the host to the monitored sites and SMTP server
+
+Install dependencies:
 
 ```bash
-cp monitors.sample.json monitors.json
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-2. Adjust the endpoints in `monitors.json`.
+## Configuration
 
-3. Start the service:
+Create your runtime environment file:
 
 ```bash
-python3 main.py --config monitors.json --host 0.0.0.0 --port 8000
+cp .env.example .env
 ```
 
-4. Open `http://127.0.0.1:8000` for the dashboard.
+Important `.env` values:
 
-## Config Example
+- `CHECK_INTERVAL_SECONDS`: monitor loop interval
+- `REQUEST_TIMEOUT_SECONDS`: per-request timeout
+- `RETRY_COUNT`: retries after a failed check
+- `RETRY_BACKOFF_SECONDS`: linear retry backoff multiplier
+- `LATENCY_ALERT_COOLDOWN_MINUTES`: suppress repeated latency alerts
+- `SMTP_*`: SMTP transport settings
+- `ALERT_FROM_EMAIL`, `ALERT_TO_EMAILS`: alert sender and recipients
+- `DASHBOARD_HOST`, `DASHBOARD_PORT`: dashboard bind settings
+
+## Site Definition Format
+
+`sites.json` supports a top-level object with a `sites` array:
 
 ```json
 {
-  "data_dir": "data",
-  "monitors": [
+  "sites": [
     {
       "name": "Production API",
-      "type": "http",
-      "url": "https://api.example.com/healthz",
-      "interval_seconds": 30,
-      "timeout_seconds": 5,
-      "expected_status": [200, 204],
-      "method": "GET",
-      "headers": {
-        "Authorization": "Bearer token"
-      },
-      "tags": ["prod", "api"]
-    },
-    {
-      "name": "Production SSH",
-      "type": "tcp",
-      "host": "prod.example.com",
-      "port": 22,
-      "interval_seconds": 15,
-      "timeout_seconds": 3,
-      "tags": ["prod", "ssh"]
-    }
-  ],
-  "alerts": [
-    {
-      "type": "webhook",
-      "url": "https://hooks.slack.com/services/...",
-      "body_template": "{\"text\": \"[$event] $monitor is now ${ok}\"}"
-    },
-    {
-      "type": "email",
-      "smtp_host": "smtp.gmail.com",
-      "smtp_port": 587,
-      "smtp_username": "alerts@example.com",
-      "smtp_password": "app-password",
-      "from_email": "alerts@example.com",
-      "to_emails": ["devops@example.com"],
-      "use_tls": true,
-      "subject_template": "[${event}] ${monitor}",
-      "body_template": "Monitor: $monitor\nTarget: $target\nTime: $checked_at\nStatus code: $status_code\nLatency: $latency_ms ms\nError: $error"
+      "url": "https://api.example.com/health",
+      "expected_status": 200,
+      "expected_text": "ok",
+      "latency_threshold_ms": 800,
+      "check_cert": true,
+      "cert_warn_days": 21,
+      "enabled": true
     }
   ]
 }
 ```
 
-## Email Notifications
+Supported fields:
 
-When a monitor changes from healthy to unhealthy, the service sends a `down` alert. When it comes back, it sends a `recovered` alert.
+- `name`: display name, unique
+- `url`: `http://` or `https://` URL
+- `expected_status`: integer or list of integers
+- `expected_text`: optional string that must appear in the response body
+- `latency_threshold_ms`: optional latency alert threshold
+- `check_cert`: enable SSL expiry tracking for HTTPS targets
+- `cert_warn_days`: days remaining threshold for SSL alerts
+- `enabled`: enable or pause monitoring for the site
 
-For email alerts, add an `alerts` entry like this:
+Changes to `sites.json` are picked up automatically on the next loop. No restart is required.
 
-```json
-{
-  "type": "email",
-  "smtp_host": "smtp.gmail.com",
-  "smtp_port": 587,
-  "smtp_username": "alerts@example.com",
-  "smtp_password": "app-password",
-  "from_email": "alerts@example.com",
-  "to_emails": ["devops@example.com", "owner@example.com"],
-  "use_tls": true,
-  "subject_template": "[${event}] ${monitor}",
-  "body_template": "Monitor: $monitor\nTarget: $target\nTime: $checked_at\nStatus code: $status_code\nLatency: $latency_ms ms\nError: $error"
-}
+## Running
+
+Start the monitor:
+
+```bash
+python3 monitor.py
 ```
 
-For port checks like `22` and `443`, use TCP monitors:
+Start the dashboard in a second terminal:
 
-```json
-{
-  "name": "SSH Port",
-  "type": "tcp",
-  "host": "ilisherbari.com",
-  "port": 22,
-  "interval_seconds": 3,
-  "timeout_seconds": 3
-}
+```bash
+python3 dashboard.py
+```
+
+Open `http://127.0.0.1:5000`.
+
+## Site Management CLI
+
+List sites:
+
+```bash
+python3 manage_sites.py list
+```
+
+Add a site:
+
+```bash
+python3 manage_sites.py add \
+  --name "Example API" \
+  --url "https://api.example.com/health" \
+  --expected-status 200 \
+  --expected-text ok \
+  --latency-threshold-ms 900 \
+  --check-cert \
+  --cert-warn-days 21
+```
+
+Disable or enable a site:
+
+```bash
+python3 manage_sites.py disable --name "Example API"
+python3 manage_sites.py enable --name "Example API"
+```
+
+Update an existing site:
+
+```bash
+python3 manage_sites.py update \
+  --name "Example API" \
+  --latency-threshold-ms 1200 \
+  --expected-status 200 \
+  --expected-status 204
+```
+
+Remove a site:
+
+```bash
+python3 manage_sites.py remove --name "Example API"
 ```
 
 ## API Endpoints
 
-- `GET /healthz`: process health check
-- `GET /api/status`: current status for all monitors
-- `GET /api/checks?limit=100`: latest checks across all monitors
-- `GET /api/checks?monitor=Production%20API&limit=50`: history for a single monitor
-- `GET /api/incidents?limit=50`: latest incidents
+- `GET /healthz`
+- `GET /api/status`
+- `GET /api/history?hours=24`
 
-## Notes
+`/api/status` returns the current view shown in the dashboard, including uptime windows and SSL countdowns. `/api/history` returns the latency and status history grouped by site.
 
-- Alerts are best-effort. Failed webhook deliveries are ignored so monitoring continues.
-- SQLite data is stored in `data/uptime_robot.db` by default.
-- If you want to run this as a service, place it behind `systemd`, Docker, or a process supervisor.
-# uptime-robot
+## Alert Behavior
+
+- DOWN alerts are sent only on transition into a new incident.
+- Recovery alerts are sent only when a site moves from DOWN back to UP.
+- High-latency alerts respect `LATENCY_ALERT_COOLDOWN_MINUTES`.
+- SSL expiry alerts are sent once per UTC day per site while the certificate remains inside the warning window.
+- If the monitor loop throws an unhandled exception, it logs the error, sends a crash email, waits, and resumes automatically.
+
+## Data Files
+
+- `state.json`: current status, timestamps, and last alert bookkeeping
+- `history.json`: every check result kept for the rolling retention window
+
+Both files are written atomically to reduce corruption risk if the process is interrupted mid-write.
+
+## systemd Example
+
+Create `/etc/systemd/system/uptime-monitor.service`:
+
+```ini
+[Unit]
+Description=Uptime Robot Monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/uptime-robot
+EnvironmentFile=/opt/uptime-robot/.env
+ExecStart=/opt/uptime-robot/.venv/bin/python monitor.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Create `/etc/systemd/system/uptime-dashboard.service`:
+
+```ini
+[Unit]
+Description=Uptime Robot Dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/uptime-robot
+EnvironmentFile=/opt/uptime-robot/.env
+ExecStart=/opt/uptime-robot/.venv/bin/python dashboard.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now uptime-monitor.service uptime-dashboard.service
+sudo systemctl status uptime-monitor.service uptime-dashboard.service
+```
+
+## Docker Example
+
+Build with a simple image:
+
+```dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["python", "monitor.py"]
+```
+
+Run the monitor:
+
+```bash
+docker build -t uptime-robot .
+docker run -d --name uptime-monitor --env-file .env -v "$PWD:/app" uptime-robot
+```
+
+Run the dashboard:
+
+```bash
+docker run -d --name uptime-dashboard --env-file .env -p 5000:5000 -v "$PWD:/app" uptime-robot python dashboard.py
+```
+
+## Operational Notes
+
+- Keep `sites.json`, `state.json`, and `history.json` on persistent storage.
+- If SMTP is not configured, monitoring still runs but email alerts are skipped.
+- The dashboard reads JSON files directly, so it does not depend on monitor process memory.
+- The included sample targets in `sites.json` are examples only. Replace them with your own production endpoints before relying on alerts.
