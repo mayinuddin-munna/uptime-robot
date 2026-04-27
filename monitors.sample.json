@@ -12,17 +12,6 @@
       "tags": ["public", "frontend"]
     },
     {
-      "name": "Internal Healthcheck",
-      "type": "http",
-      "url": "https://ilisherbari.com",
-      "interval_seconds": 15,
-      "timeout_seconds": 3,
-      "expected_status": [200, 204],
-      "method": "GET",
-      "verify_ssl": false,
-      "tags": ["internal", "service"]
-    },
-    {
       "name": "Ilisher Bari",
       "type": "http",
       "url": "https://ilisherbari.com",

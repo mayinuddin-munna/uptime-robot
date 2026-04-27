@@ -11,7 +11,7 @@
       "tags": ["public", "frontend"]
     },
     {
-      "name": "Internal Health check",
+      "name": "Internal Healthcheck",
       "url": "https://discountbazar.co.uk",
       "interval_seconds": 3,
       "timeout_seconds": 5,
