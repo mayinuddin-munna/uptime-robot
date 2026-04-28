@@ -1,5 +1,70 @@
 # Uptime Robot
 
+Production-grade uptime monitor and dashboard implemented in Python.
+
+Quick start
+
+1. Create a virtualenv and install dependencies:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+2. Copy `.env` and configure SMTP & optional settings:
+
+```bash
+cp .env .env.local
+# Edit .env.local and set SMTP_USERNAME, SMTP_PASSWORD, ALERT_TO_EMAILS, etc.
+```
+
+3. Start the monitor (recommended to run as a service):
+
+```bash
+python3 monitor.py
+```
+
+4. Start the dashboard (runs on configured host/port):
+
+```bash
+python3 dashboard.py
+```
+
+Manage sites
+
+- Add a site:
+
+```bash
+python3 manage_sites.py add --name "My Site" --url "https://example.com" --expected-status 200 --latency-threshold-ms 800 --check-cert --cert-warn-days 14
+```
+
+- List sites:
+
+```bash
+python3 manage_sites.py list
+```
+
+Testing alerts
+
+- To test email delivery, configure SMTP settings in `.env.local`, then trigger an alert by setting `enabled: false` for a site and running the monitor or by temporarily setting a very low `latency_threshold_ms`.
+
+Files of interest
+
+- `monitor.py` — long-running monitor with retries, cert checks, email alerts, history and state management.
+- `dashboard.py` — Flask dashboard with `/api/status` and `/api/history` endpoints and Chart.js frontend.
+- `manage_sites.py` — CLI for managing `sites.json`.
+- `sites.json` — configure monitored sites (example included).
+- `.env` — template for environment variables.
+
+Notes
+
+- The monitor reads `sites.json` on each cycle — changes take effect without a restart.
+- `history.json` stores a rolling 30-day history used to compute uptime windows.
+- `state.json` prevents repeated alerts and tracks last alert times.
+- Logs are written to `uptime.log` and stdout.
+# Uptime Robot
+
 This project is a production-oriented uptime monitoring robot built in Python. It watches sites defined in `sites.json`, hot-reloads configuration changes without a restart, stores rolling history in JSON, sends deduplicated email alerts, checks SSL expiry, and exposes a Flask dashboard plus JSON APIs.
 
 ## What It Does

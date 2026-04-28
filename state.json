@@ -1,0 +1,53 @@
+{
+  "updated_at": "2026-04-28T04:35:04+00:00",
+  "sites": {
+    "Python Homepage": {
+      "status": "up",
+      "last_check": "2026-04-28T04:35:02+00:00",
+      "last_change": "2026-04-28T04:35:02+00:00",
+      "last_error": null,
+      "last_http_status": 200,
+      "last_latency_ms": 75.43,
+      "down_since": null,
+      "last_down_alert_at": null,
+      "last_recovery_alert_at": null,
+      "last_latency_alert_at": null,
+      "last_cert_alert_date": null,
+      "cert_expires_at": "2027-02-14T13:03:45+00:00",
+      "cert_days_left": 292,
+      "cert_error": null
+    },
+    "GitHub API": {
+      "status": "up",
+      "last_check": "2026-04-28T04:35:02+00:00",
+      "last_change": "2026-04-28T04:35:02+00:00",
+      "last_error": null,
+      "last_http_status": 200,
+      "last_latency_ms": 211.79,
+      "down_since": null,
+      "last_down_alert_at": null,
+      "last_recovery_alert_at": null,
+      "last_latency_alert_at": null,
+      "last_cert_alert_date": null,
+      "cert_expires_at": "2026-06-03T23:59:59+00:00",
+      "cert_days_left": 36,
+      "cert_error": null
+    },
+    "HTTPBin Status": {
+      "status": "up",
+      "last_check": "2026-04-28T04:35:02+00:00",
+      "last_change": "2026-04-28T04:35:02+00:00",
+      "last_error": null,
+      "last_http_status": 200,
+      "last_latency_ms": 1154.85,
+      "down_since": null,
+      "last_down_alert_at": null,
+      "last_recovery_alert_at": null,
+      "last_latency_alert_at": null,
+      "last_cert_alert_date": null,
+      "cert_expires_at": "2026-08-17T23:59:59+00:00",
+      "cert_days_left": 111,
+      "cert_error": null
+    }
+  }
+}

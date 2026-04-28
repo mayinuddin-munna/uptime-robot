@@ -1,6 +1,40 @@
 {
   "sites": [
     {
+      "name": "Google",
+      "url": "https://www.google.com/",
+      "expected_status": 200,
+      "expected_text": null,
+      "latency_threshold_ms": 500,
+      "check_cert": true,
+      "cert_warn_days": 14,
+      "enabled": true
+    },
+    {
+      "name": "Slow JSON Placeholder",
+      "url": "https://jsonplaceholder.typicode.com/posts",
+      "expected_status": [200],
+      "expected_text": null,
+      "latency_threshold_ms": 1200,
+      "check_cert": true,
+      "cert_warn_days": 30,
+      "enabled": true
+    },
+    {
+      "name": "Example HTTPS",
+      "url": "https://example.com/",
+      "expected_status": 200,
+      "expected_text": "Example Domain",
+      "latency_threshold_ms": 800,
+      "check_cert": true,
+      "cert_warn_days": 30,
+      "enabled": true
+    }
+  ]
+}
+{
+  "sites": [
+    {
       "name": "Python Homepage",
       "url": "https://www.python.org/",
       "expected_status": 200,

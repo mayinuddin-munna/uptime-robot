@@ -1,0 +1,5 @@
+2026-04-28 10:35:02,760 | INFO | uptime_monitor | Monitor starting with sites file /home/munna/DevOps/Projects/Uptime Robot/sites.json
+2026-04-28 10:35:02,855 | INFO | uptime_monitor | Checked Python Homepage | status=up | latency_ms=75.43 | code=200 | error=None
+2026-04-28 10:35:03,108 | INFO | uptime_monitor | Checked GitHub API | status=up | latency_ms=211.79 | code=200 | error=None
+2026-04-28 10:35:04,728 | INFO | uptime_monitor | Checked HTTPBin Status | status=up | latency_ms=1154.85 | code=200 | error=None
+2026-04-28 10:35:08,626 | INFO | uptime_monitor | Monitor stopped
